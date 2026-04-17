@@ -7,7 +7,7 @@ const genAI = new GoogleGenerativeAI(API_KEY || "dummy_key");
 export const askGemini = async (prompt) => {
   if (!API_KEY) return "API Key missing. Set VITE_GEMINI_API_KEY in Vercel.";
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
     const result = await model.generateContent(prompt);
     return result.response.text();
   } catch (error) {
