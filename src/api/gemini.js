@@ -4,7 +4,7 @@
  */
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const MODEL = "gemini-1.5-flash";
+const MODEL = "gemini-1.5-flash-latest";
 const BASE_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
 /**
