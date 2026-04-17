@@ -65,7 +65,9 @@ export const db = {
       storage.set('b44_conversations', convos);
 
       // 2. Trigger Gemini Response
-      const history = convos[cIdx].messages.map(m => `${m.role}: ${m.content}`).join('\n');
+      // Only send the last 4 messages to save tokens and prevent "spike demand" rate limits
+      const recentMessages = convos[cIdx].messages.slice(-4);
+      const history = recentMessages.map(m => `${m.role}: ${m.content}`).join('\n\n');
       const aiResponseText = await askGemini(history);
 
       // 3. Add Assistant Message
