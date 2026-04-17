@@ -11,13 +11,13 @@ export const askGemini = async (prompt) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt }),
     });
-    
+
     const data = await response.json();
-    
+
     if (data.error) {
       return data.error; // Returns the rate-limit or error message from the backend
     }
-    
+
     return data.reply || "No response from AI.";
   } catch (error) {
     console.error("Frontend HTTP Error:", error);
@@ -32,13 +32,13 @@ export const askGeminiWithFile = async (prompt, fileUri) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt, fileUri }),
     });
-    
+
     const data = await response.json();
-    
+
     if (data.error) {
       return data.error;
     }
-    
+
     return data.reply || "No response from AI.";
   } catch (error) {
     console.error("Frontend HTTP Error:", error);
