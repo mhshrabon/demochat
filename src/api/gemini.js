@@ -12,6 +12,9 @@ export const askGemini = async (prompt) => {
     return result.response.text();
   } catch (error) {
     console.error("Gemini Error:", error);
+    if (error.message.includes("429") || error.message.toLowerCase().includes("quota") || error.message.toLowerCase().includes("demand")) {
+      return "⚠️ The AI is experiencing a high volume of requests. Please wait 10-20 seconds before sending another message.";
+    }
     return `AI Error: ${error.message}`;
   }
 };
