@@ -26,9 +26,14 @@ export default async function handler(req, res) {
 
   // 2. Shuffle keys randomly to distribute load
   const shuffledKeys = keys.sort(() => 0.5 - Math.random());
+  
+  // Vercel Free Tier limits functions to exactly 10 seconds.
+  // We can only try a maximum of 3 keys per request before Vercel forcefully kills the server.
+  const maxTries = Math.min(3, shuffledKeys.length);
+  const keysToTry = shuffledKeys.slice(0, maxTries);
 
   // 3. Try each key until one works
-  for (const key of shuffledKeys) {
+  for (const key of keysToTry) {
     try {
       const genAI = new GoogleGenerativeAI(key);
       const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
