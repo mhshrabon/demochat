@@ -23,7 +23,14 @@ export const askGemini = async (prompt) => {
     });
 
     const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || "No response from AI.";
+    console.log("Gemini API Full Response:", data);
+    
+    if (data.error) {
+      console.error("Gemini API returned an error:", data.error.message);
+      return `AI Error: ${data.error.message}`;
+    }
+
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "No response from AI. Please check logs.";
   } catch (error) {
     console.error("Gemini Error:", error);
     return "Error connecting to Gemini.";
