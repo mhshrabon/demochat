@@ -1,35 +1,47 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-// Using the official SDK handles all endpoint translation flawlessly
-const genAI = new GoogleGenerativeAI(API_KEY || "dummy_key");
+/**
+ * Secure Frontend Gemini client.
+ * This now forwards all requests to your Vercel backend (`/api/chat.js`)
+ * so your API keys are never exposed in the browser.
+ */
 
 export const askGemini = async (prompt) => {
-  if (!API_KEY) return "API Key missing. Set VITE_GEMINI_API_KEY in Vercel.";
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const result = await model.generateContent(prompt);
-    return result.response.text();
-  } catch (error) {
-    console.error("Gemini Error:", error);
-    if (error.message.includes("429") || error.message.toLowerCase().includes("quota") || error.message.toLowerCase().includes("demand")) {
-      return "⚠️ The AI is experiencing a high volume of requests. Please wait 10-20 seconds before sending another message.";
+    const response = await fetch('/api/chat', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    });
+    
+    const data = await response.json();
+    
+    if (data.error) {
+      return data.error; // Returns the rate-limit or error message from the backend
     }
-    return `AI Error: ${error.message}`;
+    
+    return data.reply || "No response from AI.";
+  } catch (error) {
+    console.error("Frontend HTTP Error:", error);
+    return "Error communicating with the secure backend.";
   }
 };
 
 export const askGeminiWithFile = async (prompt, fileUri) => {
-  if (!API_KEY) return "API Key missing.";
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-    const result = await model.generateContent([
-      { fileData: { mimeType: "application/pdf", fileUri: fileUri } },
-      { text: prompt },
-    ]);
-    return result.response.text();
+    const response = await fetch('/api/chat', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, fileUri }),
+    });
+    
+    const data = await response.json();
+    
+    if (data.error) {
+      return data.error;
+    }
+    
+    return data.reply || "No response from AI.";
   } catch (error) {
-    console.error("Gemini Error:", error);
-    return `AI Error: ${error.message}`;
+    console.error("Frontend HTTP Error:", error);
+    return "Error communicating with the secure backend.";
   }
 };
