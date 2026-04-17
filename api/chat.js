@@ -26,42 +26,55 @@ export default async function handler(req, res) {
 
   // 2. Shuffle keys randomly to distribute load
   const shuffledKeys = keys.sort(() => 0.5 - Math.random());
-  
+
   // Vercel Free Tier limits functions to exactly 10 seconds.
   // We can only try a maximum of 3 keys per request before Vercel forcefully kills the server.
   const maxTries = Math.min(3, shuffledKeys.length);
   const keysToTry = shuffledKeys.slice(0, maxTries);
 
   // 3. Try each key until one works
-  for (const key of keysToTry) {
-    try {
-      const genAI = new GoogleGenerativeAI(key);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-      
-      let result;
-      if (fileUri) {
-        result = await model.generateContent([
-          { fileData: { mimeType: "application/pdf", fileUri: fileUri } },
-          { text: prompt },
-        ]);
-      } else {
-        result = await model.generateContent(prompt);
-      }
-      
-      const text = result.response.text();
-      return res.status(200).json({ reply: text });
+  // Restricted to 2.5 and 3.0 models as requested based on regional availability
+  const fallbackModels = ["gemini-3.1-pro", "gemini-3.0-flash", "gemini-2.5-pro", "gemini-2.5-flash"];
 
-    } catch (error) {
-      console.error("Key failed:", error.message);
-      // If it's a rate limit / quota error, we continue the loop to try the NEXT key
-      if (error.message.includes("429") || error.message.toLowerCase().includes("quota") || error.message.toLowerCase().includes("demand")) {
-        continue; 
+  for (const key of keysToTry) {
+    const genAI = new GoogleGenerativeAI(key);
+
+    for (const modelName of fallbackModels) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+
+        let result;
+        if (fileUri) {
+          result = await model.generateContent([
+            { fileData: { mimeType: "application/pdf", fileUri: fileUri } },
+            { text: prompt },
+          ]);
+        } else {
+          result = await model.generateContent(prompt);
+        }
+
+        const text = result.response.text();
+        return res.status(200).json({ reply: text });
+
+      } catch (error) {
+        console.error(`Model ${modelName} failed:`, error.message);
+
+        // "not found" means the API key doesn't have access to this specific model (like 2.5). Try the next model!
+        if (error.message.includes("not found") || error.message.includes("v1beta")) {
+          continue;
+        }
+
+        // If it's a rate limit / quota error, try the next model/key
+        if (error.message.includes("429") || error.message.toLowerCase().includes("quota") || error.message.toLowerCase().includes("demand")) {
+          continue;
+        }
+
+        // Skip to the next key for any other unknown errors
+        break;
       }
-      // If it's a severe error (like invalid prompt), we stop immediately
-      return res.status(500).json({ error: `AI Error: ${error.message}` });
     }
   }
 
-  // If the code reaches here, ALL keys have been tried and ALL of them were rate-limited.
-  return res.status(429).json({ error: '⚠️ All API keys are currently at maximum capacity. Please wait 30 seconds!' });
+  // If the code reaches here, ALL keys and models have been tried and ALL of them failed.
+  return res.status(429).json({ error: '⚠️ All API keys and models are currently at maximum capacity. Please wait 30 seconds!' });
 }
