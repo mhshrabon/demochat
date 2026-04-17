@@ -1,0 +1,113 @@
+{
+  "name": "Goal",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Goal title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed goal description"
+    },
+    "deadline": {
+      "type": "string",
+      "format": "date",
+      "description": "Target deadline"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default": "medium"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "completed",
+        "paused"
+      ],
+      "default": "active"
+    },
+    "progress": {
+      "type": "number",
+      "default": 0,
+      "description": "Progress percentage 0-100"
+    },
+    "roadmap": {
+      "type": "array",
+      "description": "AI-generated step-by-step roadmap tasks",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "task": {
+            "type": "string"
+          },
+          "completed": {
+            "type": "boolean"
+          },
+          "timeline": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ai_summary": {
+      "type": "string",
+      "description": "AI-generated summary and strategy for this goal"
+    },
+    "conversation_id": {
+      "type": "string",
+      "description": "Linked AI chat conversation ID"
+    }
+  },
+  "required": [
+    "title"
+  ],
+  "rls": {
+    "create": {},
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
