@@ -24,37 +24,39 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'No API keys configured on Vercel.' });
   }
 
-  // 2. Pick a random key exactly as we planned
-  const randomKey = keys[Math.floor(Math.random() * keys.length)];
+  // 2. Shuffle keys randomly to distribute load
+  const shuffledKeys = keys.sort(() => 0.5 - Math.random());
 
-  // 3. Initialize Gemini securely on the server
-  const genAI = new GoogleGenerativeAI(randomKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  // 3. Try each key until one works
+  for (const key of shuffledKeys) {
+    try {
+      const genAI = new GoogleGenerativeAI(key);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      
+      let result;
+      if (fileUri) {
+        result = await model.generateContent([
+          { fileData: { mimeType: "application/pdf", fileUri: fileUri } },
+          { text: prompt },
+        ]);
+      } else {
+        result = await model.generateContent(prompt);
+      }
+      
+      const text = result.response.text();
+      return res.status(200).json({ reply: text });
 
-  try {
-    let result;
-    if (fileUri) {
-      // FlowTeach Document Analysis
-      result = await model.generateContent([
-        { fileData: { mimeType: "application/pdf", fileUri: fileUri } },
-        { text: prompt },
-      ]);
-    } else {
-      // Standard Chat
-      result = await model.generateContent(prompt);
+    } catch (error) {
+      console.error("Key failed:", error.message);
+      // If it's a rate limit / quota error, we continue the loop to try the NEXT key
+      if (error.message.includes("429") || error.message.toLowerCase().includes("quota") || error.message.toLowerCase().includes("demand")) {
+        continue; 
+      }
+      // If it's a severe error (like invalid prompt), we stop immediately
+      return res.status(500).json({ error: `AI Error: ${error.message}` });
     }
-    
-    const text = result.response.text();
-    return res.status(200).json({ reply: text });
-
-  } catch (error) {
-    console.error("Serverless Gemini Error:", error);
-    
-    // If the random key hits a rate limit
-    if (error.message.includes("429") || error.message.toLowerCase().includes("quota") || error.message.toLowerCase().includes("demand")) {
-      return res.status(429).json({ error: '⚠️ The AI is experiencing a high volume of requests. Try again and a new key will be randomly selected!' });
-    }
-    
-    return res.status(500).json({ error: `AI Error: ${error.message}` });
   }
+
+  // If the code reaches here, ALL keys have been tried and ALL of them were rate-limited.
+  return res.status(429).json({ error: '⚠️ All API keys are currently at maximum capacity. Please wait 30 seconds!' });
 }
